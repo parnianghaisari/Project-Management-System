@@ -1,0 +1,71 @@
+
+
+services:
+  frontend:
+    build:
+      context: ./worklenz-frontend
+      dockerfile: Dockerfile
+    container_name: worklenz_frontend
+    ports:
+      - "4400:4200"
+    volumes:
+      - ./worklenz-frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - worklenz
+
+  backend:
+    build:
+      context: ./worklenz-backend
+      dockerfile: Dockerfile
+    container_name: worklenz_backend
+    ports:
+      - "3300:3000"
+    env_file:
+      - ./worklenz-backend/.env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: worklenz_backend
+      DB_PASSWORD: dbpass1234
+      DB_NAME: worklenz_db
+      NODE_ENV: development
+      GOOGLE_CLIENT_ID: fake-google-client-id-1234567890.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: fake-google-client-secret-abcdefg1234567
+      S3_ACCESS_KEY_ID: "testkey"
+      S3_SECRET_ACCESS_KEY: "testsecret"
+      S3_URL: "http://localhost:9000"
+      SESSION_SECRET: "someverysecretkey"
+    volumes:
+      - ./worklenz-backend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - db
+    networks:
+      - worklenz
+
+  db:
+    image: postgres:15
+    container_name: worklenz_db
+    environment:
+      POSTGRES_DB: worklenz_db
+      POSTGRES_USER: worklenz_backend
+      POSTGRES_PASSWORD: dbpass1234
+    volumes:
+      - worklenz_postgres_data:/var/lib/postgresql/data
+      - ./worklenz-backend/database/:/docker-entrypoint-initdb.d
+    networks:
+      - worklenz
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d worklenz_db -U worklenz_backend"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  worklenz_postgres_data:
+
+networks:
+  worklenz:
